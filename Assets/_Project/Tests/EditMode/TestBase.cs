@@ -94,6 +94,55 @@ namespace AliGame.Tests
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        protected WishSO Wish(string title, DialogueSO offer, DialogueSO delivery, DialogueSO[] reminders, params (ItemSO item, int amount)[] requirements)
+        {
+            var wish = Track(ScriptableObject.CreateInstance<WishSO>());
+            wish.name = title;
+
+            var so = new SerializedObject(wish);
+            so.FindProperty("title").stringValue = title;
+            so.FindProperty("offerDialogue").objectReferenceValue = offer;
+            so.FindProperty("deliveryDialogue").objectReferenceValue = delivery;
+
+            SerializedProperty list = so.FindProperty("requirements");
+            list.arraySize = requirements.Length;
+            for (int i = 0; i < requirements.Length; i++)
+            {
+                SerializedProperty element = list.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("item").objectReferenceValue = requirements[i].item;
+                element.FindPropertyRelative("amount").intValue = requirements[i].amount;
+            }
+
+            SerializedProperty reminderList = so.FindProperty("reminderDialogues");
+            reminderList.arraySize = reminders != null ? reminders.Length : 0;
+            for (int i = 0; i < reminderList.arraySize; i++)
+                reminderList.GetArrayElementAtIndex(i).objectReferenceValue = reminders[i];
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return wish;
+        }
+
+        protected NpcStorySO Story(DialogueCharacterSO character, WishSO[] wishes, DialogueSO[] idleDialogues = null, DialogueSO farewell = null)
+        {
+            var story = Track(ScriptableObject.CreateInstance<NpcStorySO>());
+            var so = new SerializedObject(story);
+            so.FindProperty("character").objectReferenceValue = character;
+            so.FindProperty("farewellDialogue").objectReferenceValue = farewell;
+
+            SerializedProperty wishList = so.FindProperty("wishes");
+            wishList.arraySize = wishes != null ? wishes.Length : 0;
+            for (int i = 0; i < wishList.arraySize; i++)
+                wishList.GetArrayElementAtIndex(i).objectReferenceValue = wishes[i];
+
+            SerializedProperty idleList = so.FindProperty("idleDialogues");
+            idleList.arraySize = idleDialogues != null ? idleDialogues.Length : 0;
+            for (int i = 0; i < idleList.arraySize; i++)
+                idleList.GetArrayElementAtIndex(i).objectReferenceValue = idleDialogues[i];
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return story;
+        }
+
         protected T Track<T>(T created) where T : Object
         {
             _created.Add(created);

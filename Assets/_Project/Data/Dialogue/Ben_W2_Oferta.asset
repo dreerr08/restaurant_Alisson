@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 942acb0052985e7478c1e23feef0d44c, type: 3}
+  m_Name: Ben_W2_Oferta
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.DialogueSO
+  defaultSpeaker: {fileID: 11400000, guid: 3bad4e0fce8fe5a4e88a48519dd04ce6, type: 2}
+  lines:
+  - speaker: {fileID: 0}
+    text: "Molho sem massa \xE9 saudade pela metade."
+    choices: []
+    eventId: 
+  - speaker: {fileID: 0}
+    text: "Ela sovava a massa cantando, e dizia que massa boa \xE9 a que a gente
+      faz conversando."
+    choices: []
+    eventId: 
+  - speaker: {fileID: 0}
+    text: "Passa na Esta\xE7\xE3o de Mistura e me traz uma Massa. Eu conto o resto
+      da hist\xF3ria."
+    choices: []
+    eventId: 

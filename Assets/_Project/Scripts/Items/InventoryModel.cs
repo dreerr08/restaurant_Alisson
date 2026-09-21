@@ -20,7 +20,7 @@ namespace AliGame.Items
     /// Plain inventory logic: one stack per item type, each stack capped at the item's
     /// MaxStack, and at most Capacity different item types.
     /// </summary>
-    public sealed class InventoryModel
+    public sealed class InventoryModel : IItemCounter
     {
         private readonly List<ItemStack> _stacks = new List<ItemStack>();
 

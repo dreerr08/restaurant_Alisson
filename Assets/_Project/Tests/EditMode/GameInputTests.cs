@@ -103,6 +103,19 @@ namespace AliGame.Tests
         }
 
         [Test]
+        public void Journal_IsPressedWithJAndGamepadNorth()
+        {
+            Press(_keyboard.jKey);
+            Assert.IsTrue(GameInput.JournalPressed);
+            Assert.IsFalse(GameInput.InventoryPressed, "J must not open the inventory");
+            Release(_keyboard.jKey);
+
+            var gamepad = InputSystem.AddDevice<Gamepad>();
+            Press(gamepad.buttonNorth);
+            Assert.IsTrue(GameInput.JournalPressed);
+        }
+
+        [Test]
         public void Confirm_AndCancel_MatchTheirKeys()
         {
             Press(_keyboard.enterKey);

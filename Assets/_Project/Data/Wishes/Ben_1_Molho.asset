@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e14cd75e4d100bb49852f6337de4bd17, type: 3}
+  m_Name: Ben_1_Molho
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.WishSO
+  title: "O molho da bisav\xF3"
+  note: "Ele quer sentir de novo o cheiro dos domingos da inf\xE2ncia."
+  requirements:
+  - item: {fileID: 11400000, guid: 7c630eb603a8507468c253aa18c1b025, type: 2}
+    amount: 1
+  offerDialogue: {fileID: 11400000, guid: 0e6897f1a639c7b4d800980019e1eb84, type: 2}
+  reminderDialogues:
+  - {fileID: 11400000, guid: 2b3530702f984cb48aa9035250626e09, type: 2}
+  deliveryDialogue: {fileID: 11400000, guid: 678777f4a3d89884daf689ce94b6ab8a, type: 2}
+  rewards: []

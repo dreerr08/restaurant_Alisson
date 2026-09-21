@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e14cd75e4d100bb49852f6337de4bd17, type: 3}
+  m_Name: Ben_2_Massa
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.WishSO
+  title: A massa cantada
+  note: Sem massa, a saudade fica pela metade.
+  requirements:
+  - item: {fileID: 11400000, guid: f75e3de1816f07e4b82a43e3df20efd0, type: 2}
+    amount: 1
+  offerDialogue: {fileID: 11400000, guid: beeee419333b8a942b9eec5921fa834c, type: 2}
+  reminderDialogues:
+  - {fileID: 11400000, guid: 2b7eb5bad6c717b43a41d748598c3e01, type: 2}
+  deliveryDialogue: {fileID: 11400000, guid: a896e14feed3bb543ad69f576453826e, type: 2}
+  rewards: []

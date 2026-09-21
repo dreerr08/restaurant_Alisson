@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 942acb0052985e7478c1e23feef0d44c, type: 3}
+  m_Name: Ben_W1_Lembrete
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.DialogueSO
+  defaultSpeaker: {fileID: 11400000, guid: 3bad4e0fce8fe5a4e88a48519dd04ce6, type: 2}
+  lines:
+  - speaker: {fileID: 0}
+    text: "E o molho, hein? Tr\xEAs tomates no Fog\xE3o e pronto."
+    choices: []
+    eventId: 
+  - speaker: {fileID: 0}
+    text: "Sem pressa. Coisa boa n\xE3o se apressa, s\xF3 se espera."
+    choices: []
+    eventId: 

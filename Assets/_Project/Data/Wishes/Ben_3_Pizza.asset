@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e14cd75e4d100bb49852f6337de4bd17, type: 3}
+  m_Name: Ben_3_Pizza
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.WishSO
+  title: O prato inteiro
+  note: "O prato que a bisav\xF3 fazia quando algu\xE9m da fam\xEDlia estava triste."
+  requirements:
+  - item: {fileID: 11400000, guid: c740a91b20227a24db3a297f2ba62f9a, type: 2}
+    amount: 1
+  offerDialogue: {fileID: 11400000, guid: 9974e6ba50315ee4f87463b56d1f53d3, type: 2}
+  reminderDialogues:
+  - {fileID: 11400000, guid: 098da2b6f40f273469859649b0828117, type: 2}
+  deliveryDialogue: {fileID: 11400000, guid: d47be68d0c3d90e4ba7e7b229bce4020, type: 2}
+  rewards: []

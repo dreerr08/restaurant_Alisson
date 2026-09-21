@@ -24,13 +24,42 @@ namespace AliGame.Dialogue
 
         public event Action<DialogueContext> DialogueEnded;
 
+        private IDialogueSource[] _sources;
+
+        /// <summary>The fixed dialogue. It is used when no IDialogueSource on this object has anything to say.</summary>
         public DialogueSO Dialogue
         {
             get => dialogue;
             set => dialogue = value;
         }
 
-        protected override bool CanInteract => runner != null && !runner.IsRunning && dialogue != null && dialogue.Lines.Count > 0;
+        /// <summary>What this character would say right now: the first source that answers, else the fixed dialogue.</summary>
+        public DialogueSO CurrentDialogue
+        {
+            get
+            {
+                if (_sources != null)
+                {
+                    foreach (IDialogueSource source in _sources)
+                    {
+                        DialogueSO fromSource = source.GetDialogue();
+                        if (fromSource != null && fromSource.Lines.Count > 0) return fromSource;
+                    }
+                }
+                return dialogue;
+            }
+        }
+
+        protected override bool CanInteract
+        {
+            get
+            {
+                if (runner == null || runner.IsRunning) return false;
+
+                DialogueSO next = CurrentDialogue;
+                return next != null && next.Lines.Count > 0;
+            }
+        }
 
         protected override string PromptText
         {
@@ -38,13 +67,15 @@ namespace AliGame.Dialogue
             {
                 if (!string.IsNullOrEmpty(promptText)) return promptText;
 
-                DialogueCharacterSO speaker = dialogue != null ? dialogue.DefaultSpeaker : null;
+                DialogueSO next = CurrentDialogue;
+                DialogueCharacterSO speaker = next != null ? next.DefaultSpeaker : null;
                 return speaker != null ? "Falar com " + speaker.DisplayName : "Conversar";
             }
         }
 
         protected override void Initialize()
         {
+            _sources = GetComponents<IDialogueSource>();
             if (runner == null) runner = FindFirstObjectByType<DialogueRunner>();
             if (runner == null) Debug.LogWarning("DialogueTrigger: no DialogueRunner found in the scene.", this);
         }
@@ -69,7 +100,7 @@ namespace AliGame.Dialogue
 
         protected override void Interact(GameObject interactor)
         {
-            runner.StartDialogue(dialogue, transform, interactor.transform);
+            runner.StartDialogue(CurrentDialogue, transform, interactor.transform);
         }
 
         // Any conversation that has this object as speaker counts, no matter who started it.

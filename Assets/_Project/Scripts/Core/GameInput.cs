@@ -19,6 +19,7 @@ namespace AliGame.Core
         private static InputAction _jump;
         private static InputAction _interact;
         private static InputAction _inventory;
+        private static InputAction _journal;
         private static InputAction _confirm;
         private static InputAction _cancel;
         private static InputAction _navigateUp;
@@ -51,6 +52,9 @@ namespace AliGame.Core
         public static bool InteractPressed => Pressed(ref _interact);
 
         public static bool InventoryPressed => Pressed(ref _inventory);
+
+        /// <summary>Opens or closes the wish journal.</summary>
+        public static bool JournalPressed => Pressed(ref _journal);
 
         /// <summary>Continue / select in dialogue and menus.</summary>
         public static bool ConfirmPressed => Pressed(ref _confirm);
@@ -93,7 +97,8 @@ namespace AliGame.Core
             }
 
             _asset = null;
-            _move = _jump = _interact = _inventory = _confirm = _cancel = _navigateUp = _navigateDown = _click = null;
+            _move = _jump = _interact = _inventory = _journal = null;
+            _confirm = _cancel = _navigateUp = _navigateDown = _click = null;
             _choices = null;
         }
 
@@ -121,6 +126,7 @@ namespace AliGame.Core
             _jump = _asset.FindAction("Gameplay/Jump", true);
             _interact = _asset.FindAction("Gameplay/Interact", true);
             _inventory = _asset.FindAction("Gameplay/Inventory", true);
+            _journal = _asset.FindAction("Gameplay/Journal", true);
             _confirm = _asset.FindAction("UI/Confirm", true);
             _cancel = _asset.FindAction("UI/Cancel", true);
             _navigateUp = _asset.FindAction("UI/NavigateUp", true);
