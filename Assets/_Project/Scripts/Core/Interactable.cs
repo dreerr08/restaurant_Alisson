@@ -15,9 +15,18 @@ namespace AliGame.Core
     {
         private static readonly List<Interactable> All = new List<Interactable>();
 
-        [SerializeField] private LayerMask interactorLayers = ~0;
+        public enum AreaShape { Circle, Box }
+
+        [Header("Interaction area")]
+        [Tooltip("Circle uses Interact Radius; Box uses Box Size. Both are centered on this object plus Interact Offset.")]
+        [SerializeField] private AreaShape areaShape = AreaShape.Circle;
         [SerializeField, Min(0f)] private float interactRadius = 2.5f;
+        [Tooltip("Width and height of the area when the shape is Box.")]
+        [SerializeField] private Vector2 boxSize = new Vector2(4f, 3f);
+        [Tooltip("Moves the center of the area, in world units.")]
         [SerializeField] private Vector2 interactOffset;
+        [Tooltip("Only things on these layers can use this. The player needs an Inventory.")]
+        [SerializeField] private LayerMask interactorLayers = ~0;
 
         private readonly Collider2D[] _hits = new Collider2D[8];
         private ContactFilter2D _filter;
@@ -80,7 +89,9 @@ namespace AliGame.Core
             _player = null;
 
             Vector2 center = (Vector2)transform.position + interactOffset;
-            int count = Physics2D.OverlapCircle(center, interactRadius, _filter, _hits);
+            int count = areaShape == AreaShape.Box
+                ? Physics2D.OverlapBox(center, boxSize, 0f, _filter, _hits)
+                : Physics2D.OverlapCircle(center, interactRadius, _filter, _hits);
 
             for (int i = 0; i < count; i++)
             {
@@ -108,8 +119,15 @@ namespace AliGame.Core
 
         protected virtual void OnDrawGizmosSelected()
         {
-            Gizmos.color = new Color(0.94f, 0.66f, 0.23f, 0.9f);
-            Gizmos.DrawWireSphere((Vector2)transform.position + interactOffset, interactRadius);
+            var center = (Vector3)((Vector2)transform.position + interactOffset);
+
+            Gizmos.color = new Color(0.94f, 0.66f, 0.23f, 0.15f);
+            if (areaShape == AreaShape.Box) Gizmos.DrawCube(center, boxSize);
+            else Gizmos.DrawSphere(center, interactRadius);
+
+            Gizmos.color = new Color(0.94f, 0.66f, 0.23f, 1f);
+            if (areaShape == AreaShape.Box) Gizmos.DrawWireCube(center, boxSize);
+            else Gizmos.DrawWireSphere(center, interactRadius);
         }
     }
 }

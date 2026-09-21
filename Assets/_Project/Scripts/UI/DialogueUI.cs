@@ -15,20 +15,68 @@ namespace AliGame.UI
     /// plate, text that types itself out, a "continue" hint and, when a line has choices, a list of answers.
     /// Continue with E, Space, Enter, click or gamepad South/West (the first press finishes typing). Pick answers
     /// with the mouse, W/S or arrows + E/Enter, or the number keys. Esc leaves the conversation.
+    /// Every size below can be changed in the Inspector; with Preview In Editor on, the box is drawn in the Game
+    /// view without pressing Play (the preview is never saved in the scene).
     /// </summary>
+    [ExecuteAlways]
     public class DialogueUI : MonoBehaviour, IDialogueView
     {
+        private const string CanvasName = "DialogueCanvas";
+
+        [Header("General")]
         [SerializeField] private Font font;
         [SerializeField, Min(0.5f)] private float uiScale = 1.3f;
         [Tooltip("Characters revealed per second (a DialogueCharacterSO can override it).")]
         [SerializeField, Min(1f)] private float charactersPerSecond = 42f;
         [SerializeField] private float animationDuration = 0.25f;
 
-        private const float BoxWidth = 1180f;
-        private const float BoxHeight = 210f;
-        private const float BoxBottomMargin = 44f;
-        private const float PortraitSize = 172f;
-        private const float ChoicesWidth = 600f;
+        [Header("Box")]
+        [SerializeField, Min(200f)] private float boxWidth = 850f;
+        [SerializeField, Min(100f)] private float boxHeight = 236f;
+        [Tooltip("Distance from the bottom of the screen.")]
+        [SerializeField] private float bottomMargin = 44f;
+        [Tooltip("Moves the box (and the choices next to it) left or right.")]
+        [SerializeField] private float horizontalOffset;
+        [SerializeField, Min(0)] private int cornerRadius = 30;
+
+        [Header("Portrait")]
+        [SerializeField, Min(0f)] private float portraitSize = 172f;
+        [Tooltip("Distance from the left edge of the box.")]
+        [SerializeField] private float portraitMargin = 26f;
+
+        [Header("Text")]
+        [SerializeField, Min(8)] private int textSize = 28;
+        [Tooltip("Gap between the portrait (or the box's left edge) and the text.")]
+        [SerializeField] private float textLeftGap = 30f;
+        [Tooltip("Room kept free on the right, for the continue hint.")]
+        [SerializeField] private float textRightGap = 96f;
+        [Tooltip("Distance from the top edge of the box (leaves room for the name plate).")]
+        [SerializeField] private float textTopGap = 48f;
+        [SerializeField] private float textBottomGap = 26f;
+
+        [Header("Name plate")]
+        [SerializeField, Min(8)] private int nameSize = 30;
+        [Tooltip("Extra offset from its default place on the top edge of the box.")]
+        [SerializeField] private Vector2 namePlateOffset;
+
+        [Header("Choices")]
+        [SerializeField, Min(100f)] private float choicesWidth = 290f;
+        [Tooltip("Space between the box and the choices.")]
+        [SerializeField] private float choicesGap = 12f;
+        [SerializeField] private float choicesSpacing = 8f;
+        [Tooltip("Extra offset from the choices' default place (right of the box, bottom-aligned with it).")]
+        [SerializeField] private Vector2 choicesOffset;
+        [SerializeField, Min(8)] private int choicesTextSize = 23;
+        [SerializeField, Min(20f)] private float choicesMinHeight = 50f;
+        [SerializeField, Min(16f)] private float choicesBadgeSize = 32f;
+
+        [Header("Editor preview")]
+        [Tooltip("Draws the box in the Game view outside Play mode so you can adjust it. Never saved in the scene.")]
+        [SerializeField] private bool previewInEditor = true;
+        [SerializeField] private DialogueCharacterSO previewSpeaker;
+        [SerializeField, TextArea(2, 5)] private string previewText = "Ora, ora! Este é um texto de exemplo para ajustar o tamanho da caixa.";
+        [SerializeField, Range(0, 5)] private int previewChoices = 3;
+        [SerializeField] private bool previewContinueHint = true;
 
         private RectTransform _window;
         private CanvasGroup _group;
@@ -56,6 +104,7 @@ namespace AliGame.UI
         private float _nextDelay;
         private float _speed;
         private DialogueLine _line;
+        private bool _rebuildQueued;
 
         public event Action AdvanceRequested;
 
@@ -70,11 +119,95 @@ namespace AliGame.UI
 
         private void Awake()
         {
+            if (!Application.isPlaying) return;
+
+            DestroyBuilt();
             _font = UIStyle.ResolveFont(font);
             EnsureEventSystem();
             BuildUI();
             Apply();
             _root.SetActive(false);
+        }
+
+        private void OnEnable()
+        {
+            if (!Application.isPlaying) RebuildPreview();
+        }
+
+        private void OnDisable()
+        {
+            if (!Application.isPlaying) DestroyBuilt();
+        }
+
+        private void OnValidate()
+        {
+#if UNITY_EDITOR
+            if (Application.isPlaying || _rebuildQueued) return;
+
+            _rebuildQueued = true;
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                _rebuildQueued = false;
+                if (this != null) RebuildPreview();
+            };
+#endif
+        }
+
+        [ContextMenu("Refresh preview")]
+        private void RebuildPreview()
+        {
+            if (Application.isPlaying) return;
+
+            DestroyBuilt();
+            if (!previewInEditor || !isActiveAndEnabled) return;
+
+            _font = UIStyle.ResolveFont(font);
+            BuildUI();
+
+            _open = true;
+            _t = 1f;
+            Apply();
+            _root.SetActive(true);
+
+            ApplySpeaker(previewSpeaker);
+            _bodyText.text = previewText ?? string.Empty;
+            _line = null;
+
+            if (previewChoices > 0)
+            {
+                var labels = new List<string>();
+                for (int i = 0; i < previewChoices; i++) labels.Add("Opção de exemplo " + (i + 1));
+                BuildChoiceButtons(labels);
+            }
+            _indicator.gameObject.SetActive(previewChoices == 0 && previewContinueHint);
+
+            foreach (Transform child in transform)
+            {
+                if (child.name == CanvasName) SetPreviewFlags(child);
+            }
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_choicesContainer);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_namePlateRect);
+            Canvas.ForceUpdateCanvases();
+#if UNITY_EDITOR
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+#endif
+        }
+
+        private static void SetPreviewFlags(Transform root)
+        {
+            root.gameObject.hideFlags = HideFlags.DontSave | HideFlags.NotEditable;
+            foreach (Transform child in root) SetPreviewFlags(child);
+        }
+
+        private void DestroyBuilt()
+        {
+            _choices.Clear();
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.name == CanvasName) DestroyImmediate(child.gameObject);
+            }
         }
 
         public void Open()
@@ -102,21 +235,7 @@ namespace AliGame.UI
             _line = line;
             ClearChoices();
             _indicator.gameObject.SetActive(false);
-
-            bool hasPortrait = speaker != null && speaker.Portrait != null;
-            _portraitTile.gameObject.SetActive(hasPortrait);
-            if (hasPortrait) _portraitImage.sprite = speaker.Portrait;
-
-            bool hasName = speaker != null && !string.IsNullOrEmpty(speaker.DisplayName);
-            _namePlate.gameObject.SetActive(hasName);
-            if (hasName)
-            {
-                _nameText.text = speaker.DisplayName;
-                _namePlate.color = speaker.AccentColor;
-            }
-
-            _namePlateRect.anchoredPosition = new Vector2(hasPortrait ? PortraitSize + 60f : 40f, 0f);
-            UIStyle.Stretch(_bodyText.rectTransform, hasPortrait ? PortraitSize + 56f : 44f, 26f, 96f, 48f);
+            ApplySpeaker(speaker);
 
             _speed = speaker != null && speaker.TypingSpeed > 0f ? speaker.TypingSpeed : charactersPerSecond;
             _fullText = line.Text;
@@ -129,8 +248,31 @@ namespace AliGame.UI
             if (_fullText.Length == 0) FinishTyping();
         }
 
+        private void ApplySpeaker(DialogueCharacterSO speaker)
+        {
+            bool hasPortrait = speaker != null && speaker.Portrait != null;
+            _portraitTile.gameObject.SetActive(hasPortrait);
+            if (hasPortrait) _portraitImage.sprite = speaker.Portrait;
+
+            bool hasName = speaker != null && !string.IsNullOrEmpty(speaker.DisplayName);
+            _namePlate.gameObject.SetActive(hasName);
+            if (hasName)
+            {
+                _nameText.text = speaker.DisplayName;
+                _namePlate.color = speaker.AccentColor;
+            }
+
+            float plateX = (hasPortrait ? portraitMargin + portraitSize + 34f : 40f) + namePlateOffset.x;
+            _namePlateRect.anchoredPosition = new Vector2(plateX, namePlateOffset.y);
+
+            float left = (hasPortrait ? portraitMargin + portraitSize : portraitMargin) + textLeftGap;
+            UIStyle.Stretch(_bodyText.rectTransform, left, textBottomGap, textRightGap, textTopGap);
+        }
+
         private void Update()
         {
+            if (!Application.isPlaying) return;
+
             AnimateWindow();
             if (!_open) return;
 
@@ -184,8 +326,16 @@ namespace AliGame.UI
             _typing = false;
             _bodyText.text = _fullText;
 
-            if (_line != null && _line.HasChoices) BuildChoices(_line.Choices);
-            else _indicator.gameObject.SetActive(true);
+            if (_line != null && _line.HasChoices)
+            {
+                var labels = new List<string>();
+                foreach (DialogueChoice choice in _line.Choices) labels.Add(choice.Label);
+                BuildChoiceButtons(labels);
+            }
+            else
+            {
+                _indicator.gameObject.SetActive(true);
+            }
         }
 
         private static float PauseAfter(char c)
@@ -205,11 +355,12 @@ namespace AliGame.UI
             }
         }
 
-        private void BuildChoices(IReadOnlyList<DialogueChoice> choices)
+        private void BuildChoiceButtons(IReadOnlyList<string> labels)
         {
-            for (int i = 0; i < choices.Count; i++)
+            for (int i = 0; i < labels.Count; i++)
             {
-                DialogueChoiceButton button = DialogueChoiceButton.Create(_choicesContainer, i, choices[i].Label, _font);
+                DialogueChoiceButton button = DialogueChoiceButton.Create(
+                    _choicesContainer, i, labels[i], _font, choicesTextSize, choicesMinHeight, choicesBadgeSize);
                 button.Hovered += SetSelectedChoice;
                 button.Clicked += PickChoice;
                 _choices.Add(button);
@@ -222,7 +373,7 @@ namespace AliGame.UI
             foreach (DialogueChoiceButton button in _choices)
             {
                 button.transform.SetParent(null, false);
-                Destroy(button.gameObject);
+                DestroyUiObject(button.gameObject);
             }
             _choices.Clear();
         }
@@ -269,7 +420,7 @@ namespace AliGame.UI
         {
             float eased = _open ? EaseOutBack(_t) : _t * _t * (3f - 2f * _t);
             _group.alpha = Mathf.Clamp01(_t * 1.6f);
-            _window.anchoredPosition = new Vector2(0f, -Mathf.LerpUnclamped(BoxHeight + 110f, 0f, eased));
+            _window.anchoredPosition = new Vector2(0f, -Mathf.LerpUnclamped(boxHeight + 110f, 0f, eased));
         }
 
         private static float EaseOutBack(float t)
@@ -280,6 +431,12 @@ namespace AliGame.UI
             return 1f + c3 * x * x * x + c1 * x * x;
         }
 
+        private static void DestroyUiObject(UnityEngine.Object target)
+        {
+            if (Application.isPlaying) Destroy(target);
+            else DestroyImmediate(target);
+        }
+
         private static void EnsureEventSystem()
         {
             if (FindFirstObjectByType<EventSystem>() != null) return;
@@ -288,7 +445,7 @@ namespace AliGame.UI
 
         private void BuildUI()
         {
-            var canvasObject = new GameObject("DialogueCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject(CanvasName, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.sortingOrder = 95;
@@ -319,26 +476,26 @@ namespace AliGame.UI
             _window = (RectTransform)windowObject.transform;
             UIStyle.Stretch(_window);
 
-            Image box = UIStyle.CreateImage(_window, "Box", UIStyle.Rounded(30), UIStyle.Panel);
+            Image box = UIStyle.CreateImage(_window, "Box", UIStyle.Rounded(cornerRadius), UIStyle.Panel);
             box.raycastTarget = true;
             var boxRect = (RectTransform)box.transform;
             boxRect.anchorMin = boxRect.anchorMax = boxRect.pivot = new Vector2(0.5f, 0f);
-            boxRect.sizeDelta = new Vector2(BoxWidth, BoxHeight);
-            boxRect.anchoredPosition = new Vector2(0f, BoxBottomMargin);
+            boxRect.sizeDelta = new Vector2(boxWidth, boxHeight);
+            boxRect.anchoredPosition = new Vector2(horizontalOffset, bottomMargin);
             UIStyle.AddShadowBehind(boxRect, 34f, new Vector2(0f, -10f), 0.45f);
 
             _portraitTile = UIStyle.CreateImage(boxRect, "PortraitTile", UIStyle.Rounded(26), UIStyle.Tray);
             var tileRect = (RectTransform)_portraitTile.transform;
             tileRect.anchorMin = tileRect.anchorMax = tileRect.pivot = new Vector2(0f, 0.5f);
-            tileRect.sizeDelta = new Vector2(PortraitSize, PortraitSize);
-            tileRect.anchoredPosition = new Vector2(26f, 0f);
+            tileRect.sizeDelta = new Vector2(portraitSize, portraitSize);
+            tileRect.anchoredPosition = new Vector2(portraitMargin, 0f);
 
             _portraitImage = UIStyle.CreateImage(tileRect, "Portrait", null, Color.white);
             _portraitImage.preserveAspect = true;
             UIStyle.Stretch((RectTransform)_portraitImage.transform, 8f, 8f, 8f, 8f);
 
-            _bodyText = UIStyle.CreateText(boxRect, "Body", _font, 32, FontStyle.Normal, UIStyle.TextDark, TextAnchor.UpperLeft);
-            UIStyle.Stretch(_bodyText.rectTransform, 44f, 26f, 96f, 48f);
+            _bodyText = UIStyle.CreateText(boxRect, "Body", _font, textSize, FontStyle.Normal, UIStyle.TextDark, TextAnchor.UpperLeft);
+            UIStyle.Stretch(_bodyText.rectTransform, textLeftGap, textBottomGap, textRightGap, textTopGap);
 
             Image indicator = UIStyle.CreateImage(boxRect, "ContinueHint", UIStyle.Rounded(14), UIStyle.Accent);
             _indicator = (RectTransform)indicator.transform;
@@ -366,20 +523,22 @@ namespace AliGame.UI
             plateFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             plateFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            _nameText = UIStyle.CreateText(_namePlateRect, "Name", _font, 30, FontStyle.Bold, UIStyle.HeaderText, TextAnchor.MiddleCenter);
+            _nameText = UIStyle.CreateText(_namePlateRect, "Name", _font, nameSize, FontStyle.Bold, UIStyle.HeaderText, TextAnchor.MiddleCenter);
             _nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
 
             var choicesObject = new GameObject("Choices", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             choicesObject.transform.SetParent(boxRect, false);
             _choicesContainer = (RectTransform)choicesObject.transform;
-            _choicesContainer.anchorMin = _choicesContainer.anchorMax = new Vector2(1f, 1f);
-            _choicesContainer.pivot = new Vector2(1f, 0f);
-            _choicesContainer.sizeDelta = new Vector2(ChoicesWidth, 0f);
-            _choicesContainer.anchoredPosition = new Vector2(-16f, 24f);
+
+            // To the right of the box, bottom-aligned with it, growing upward.
+            _choicesContainer.anchorMin = _choicesContainer.anchorMax = new Vector2(1f, 0f);
+            _choicesContainer.pivot = new Vector2(0f, 0f);
+            _choicesContainer.sizeDelta = new Vector2(choicesWidth, 0f);
+            _choicesContainer.anchoredPosition = new Vector2(choicesGap + choicesOffset.x, choicesOffset.y);
 
             var choicesLayout = choicesObject.GetComponent<VerticalLayoutGroup>();
-            choicesLayout.spacing = 10f;
-            choicesLayout.childAlignment = TextAnchor.LowerRight;
+            choicesLayout.spacing = choicesSpacing;
+            choicesLayout.childAlignment = TextAnchor.LowerLeft;
             choicesLayout.childControlWidth = true;
             choicesLayout.childControlHeight = true;
             choicesLayout.childForceExpandWidth = true;

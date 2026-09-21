@@ -19,14 +19,14 @@ namespace AliGame.UI
 
         public event Action<int> Clicked;
 
-        public static DialogueChoiceButton Create(Transform parent, int index, string label, Font font)
+        public static DialogueChoiceButton Create(Transform parent, int index, string label, Font font, int textSize, float minHeight, float badgeSize)
         {
-            Image background = UIStyle.CreateImage(parent, "Choice " + (index + 1), UIStyle.Rounded(22), UIStyle.Panel);
+            Image background = UIStyle.CreateImage(parent, "Choice " + (index + 1), UIStyle.Rounded(18), UIStyle.Panel);
             background.raycastTarget = true;
 
             var layout = background.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(14, 24, 12, 12);
-            layout.spacing = 16f;
+            layout.padding = new RectOffset(10, 16, 8, 8);
+            layout.spacing = 10f;
             layout.childAlignment = TextAnchor.MiddleLeft;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
@@ -34,24 +34,24 @@ namespace AliGame.UI
             layout.childForceExpandHeight = false;
 
             var element = background.gameObject.AddComponent<LayoutElement>();
-            element.minHeight = 66f;
+            element.minHeight = minHeight;
 
             var outline = background.gameObject.AddComponent<Outline>();
             outline.effectColor = UIStyle.Accent;
-            outline.effectDistance = new Vector2(3f, 3f);
+            outline.effectDistance = new Vector2(2.5f, 2.5f);
             outline.enabled = false;
 
-            Image badge = UIStyle.CreateImage(background.transform, "Number", UIStyle.Rounded(14), UIStyle.Accent);
+            Image badge = UIStyle.CreateImage(background.transform, "Number", UIStyle.Rounded(11), UIStyle.Accent);
             var badgeElement = badge.gameObject.AddComponent<LayoutElement>();
-            badgeElement.preferredWidth = 42f;
-            badgeElement.preferredHeight = 42f;
+            badgeElement.preferredWidth = badgeSize;
+            badgeElement.preferredHeight = badgeSize;
             badgeElement.flexibleWidth = 0f;
 
-            Text number = UIStyle.CreateText(badge.transform, "Text", font, 26, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleCenter);
+            Text number = UIStyle.CreateText(badge.transform, "Text", font, Mathf.RoundToInt(badgeSize * 0.65f), FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleCenter);
             UIStyle.Stretch(number.rectTransform);
             number.text = (index + 1).ToString();
 
-            Text text = UIStyle.CreateText(background.transform, "Label", font, 28, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleLeft);
+            Text text = UIStyle.CreateText(background.transform, "Label", font, textSize, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleLeft);
             text.text = label;
             var textElement = text.gameObject.AddComponent<LayoutElement>();
             textElement.flexibleWidth = 1f;
