@@ -1,9 +1,9 @@
+using AliGame.Core;
 using AliGame.Data;
 using AliGame.Items;
 using AliGame.Movement;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
@@ -98,12 +98,8 @@ namespace AliGame.UI
 
         private void Update()
         {
-            var keyboard = Keyboard.current;
-            if (keyboard != null)
-            {
-                if (keyboard.iKey.wasPressedThisFrame || keyboard.tabKey.wasPressedThisFrame) Toggle();
-                else if (_open && keyboard.escapeKey.wasPressedThisFrame) Close();
-            }
+            if (GameInput.InventoryPressed) Toggle();
+            else if (_open && GameInput.CancelPressed) Close();
 
             float target = _open ? 1f : 0f;
             if (Mathf.Approximately(_t, target)) return;

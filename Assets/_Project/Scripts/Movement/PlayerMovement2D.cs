@@ -1,12 +1,11 @@
+using AliGame.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace AliGame.Movement
 {
     /// <summary>
-    /// Walk (A/D, arrows, left stick), flip toward the movement direction and jump
-    /// (Space / gamepad south). Grounded is detected from the collider's own contacts:
-    /// touching a solid collider whose contact normal points up.
+    /// Walk and jump from GameInput, flipping toward the movement direction. Grounded is detected from the
+    /// collider's own contacts: touching a solid collider whose contact normal points up.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
     public class PlayerMovement2D : MonoBehaviour
@@ -50,10 +49,10 @@ namespace AliGame.Movement
 
         private void Update()
         {
-            _moveInput = InputEnabled ? ReadHorizontalInput() : 0f;
+            _moveInput = InputEnabled ? GameInput.Move : 0f;
 
             if (!InputEnabled) _jumpRequested = false;
-            else if (WasJumpPressed()) _jumpRequested = true;
+            else if (GameInput.JumpPressed) _jumpRequested = true;
 
             if (_moveInput > 0.01f) Face(1f);
             else if (_moveInput < -0.01f) Face(-1f);
@@ -89,33 +88,5 @@ namespace AliGame.Movement
             transform.localScale = new Vector3(_baseScale.x * direction, _baseScale.y, _baseScale.z);
         }
 
-        private static float ReadHorizontalInput()
-        {
-            float value = 0f;
-
-            var keyboard = Keyboard.current;
-            if (keyboard != null)
-            {
-                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) value -= 1f;
-                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) value += 1f;
-            }
-
-            var gamepad = Gamepad.current;
-            if (gamepad != null)
-            {
-                float stick = gamepad.leftStick.x.ReadValue();
-                if (Mathf.Abs(stick) > Mathf.Abs(value)) value = stick;
-            }
-
-            return Mathf.Clamp(value, -1f, 1f);
-        }
-
-        private static bool WasJumpPressed()
-        {
-            var keyboard = Keyboard.current;
-            var gamepad = Gamepad.current;
-            return (keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
-                || (gamepad != null && gamepad.buttonSouth.wasPressedThisFrame);
-        }
     }
 }

@@ -3,12 +3,11 @@ using AliGame.Items;
 using AliGame.Movement;
 using AliGame.UI;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace AliGame.Core
 {
     /// <summary>
-    /// Base for anything the player uses by standing close and pressing E (or gamepad West): crafting stations,
+    /// Base for anything the player uses by standing close and pressing the Interact button: crafting stations,
     /// NPCs to talk to... It detects the player (anything with an Inventory) within Interact Radius, shows the
     /// "[E] ..." prompt and calls Interact. When several overlap, only the nearest one reacts.
     /// </summary>
@@ -71,7 +70,7 @@ namespace AliGame.Core
             }
 
             InteractionPromptUI.Show(this, "E", PromptText);
-            if (WasInteractPressed()) Interact(_interactor.gameObject);
+            if (GameInput.InteractPressed) Interact(_interactor.gameObject);
         }
 
         private void DetectPlayer()
@@ -105,14 +104,6 @@ namespace AliGame.Core
                 if (Mathf.Approximately(other._distance, _distance) && other.GetInstanceID() < GetInstanceID()) return false;
             }
             return true;
-        }
-
-        private static bool WasInteractPressed()
-        {
-            var keyboard = Keyboard.current;
-            var gamepad = Gamepad.current;
-            return (keyboard != null && keyboard.eKey.wasPressedThisFrame)
-                || (gamepad != null && gamepad.buttonWest.wasPressedThisFrame);
         }
 
         protected virtual void OnDrawGizmosSelected()

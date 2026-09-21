@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using AliGame.Core;
 using AliGame.Data;
 using AliGame.Dialogue;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
@@ -140,15 +140,14 @@ namespace AliGame.UI
 
             if (Time.frameCount <= _openedFrame) return;
 
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            if (GameInput.CancelPressed)
             {
                 CancelRequested?.Invoke();
                 return;
             }
 
             if (_choices.Count > 0) HandleChoiceInput();
-            else if (WasAdvancePressed()) OnAdvance();
+            else if (GameInput.ConfirmPressed || GameInput.ClickPressed) OnAdvance();
         }
 
         private void OnAdvance()
@@ -244,44 +243,16 @@ namespace AliGame.UI
 
         private void HandleChoiceInput()
         {
-            var keyboard = Keyboard.current;
-            var gamepad = Gamepad.current;
+            if (GameInput.NavigateUpPressed) SetSelectedChoice((_selectedChoice - 1 + _choices.Count) % _choices.Count);
+            if (GameInput.NavigateDownPressed) SetSelectedChoice((_selectedChoice + 1) % _choices.Count);
 
-            bool up = (keyboard != null && (keyboard.upArrowKey.wasPressedThisFrame || keyboard.wKey.wasPressedThisFrame))
-                || (gamepad != null && gamepad.dpad.up.wasPressedThisFrame);
-            bool down = (keyboard != null && (keyboard.downArrowKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame))
-                || (gamepad != null && gamepad.dpad.down.wasPressedThisFrame);
-
-            if (up) SetSelectedChoice((_selectedChoice - 1 + _choices.Count) % _choices.Count);
-            if (down) SetSelectedChoice((_selectedChoice + 1) % _choices.Count);
-
-            if (keyboard != null)
+            if (GameInput.TryGetChoicePressed(_choices.Count, out int shortcut))
             {
-                for (int i = 0; i < _choices.Count && i < 9; i++)
-                {
-                    if (keyboard[Key.Digit1 + i].wasPressedThisFrame)
-                    {
-                        PickChoice(i);
-                        return;
-                    }
-                }
+                PickChoice(shortcut);
+                return;
             }
 
-            if (WasConfirmPressed()) PickChoice(_selectedChoice);
-        }
-
-        private static bool WasConfirmPressed()
-        {
-            var keyboard = Keyboard.current;
-            var gamepad = Gamepad.current;
-            return (keyboard != null && (keyboard.eKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame))
-                || (gamepad != null && (gamepad.buttonSouth.wasPressedThisFrame || gamepad.buttonWest.wasPressedThisFrame));
-        }
-
-        private static bool WasAdvancePressed()
-        {
-            var mouse = Mouse.current;
-            return WasConfirmPressed() || (mouse != null && mouse.leftButton.wasPressedThisFrame);
+            if (GameInput.ConfirmPressed) PickChoice(_selectedChoice);
         }
 
         private void AnimateWindow()
