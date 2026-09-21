@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 871cb0a99a42d464e95f88554563b61e, type: 3}
+  m_Name: Receita_Pizza
+  m_EditorClassIdentifier: Assembly-CSharp::AliGame.Data.RecipeSO
+  station: 0
+  result: {fileID: 11400000, guid: c740a91b20227a24db3a297f2ba62f9a, type: 2}
+  resultAmount: 1
+  ingredients:
+  - item: {fileID: 11400000, guid: f75e3de1816f07e4b82a43e3df20efd0, type: 2}
+    amount: 1
+  - item: {fileID: 11400000, guid: 7c630eb603a8507468c253aa18c1b025, type: 2}
+    amount: 1
+  - item: {fileID: 11400000, guid: 56ab29bb726e8ea47a6bc29d3b47851e, type: 2}
+    amount: 1

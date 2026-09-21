@@ -1,0 +1,53 @@
+# Unity generated
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Unity Test Runner scratch scene
+/[Aa]ssets/InitTestScene*.unity*
+
+# Editor recovery and tool output (not part of the game)
+/[Aa]ssets/_Recovery*
+/[Aa]ssets/[Ss]creenshots*
+
+# IDE / generated project files
+/.vs/
+/.vscode/
+/.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Builds and packages
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Crash and profiler data
+sysinfo.txt
+crashlytics-build.properties
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# OS
+.DS_Store
+Thumbs.db

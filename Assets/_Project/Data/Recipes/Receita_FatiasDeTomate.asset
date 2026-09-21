@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 871cb0a99a42d464e95f88554563b61e, type: 3}
+  m_Name: Receita_FatiasDeTomate
+  m_EditorClassIdentifier: Assembly-CSharp::AliGame.Data.RecipeSO
+  station: 1
+  result: {fileID: 11400000, guid: 1ebbf6c14b12b1d4b83c1c2e3135caf2, type: 2}
+  resultAmount: 2
+  ingredients:
+  - item: {fileID: 11400000, guid: 4d9b156253be4ed4ebad4d94969f0435, type: 2}
+    amount: 1

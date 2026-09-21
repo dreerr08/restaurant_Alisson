@@ -1,0 +1,24 @@
+# Normalize line endings for text files
+* text=auto
+
+# Unity YAML assets are text but must never be "fixed" or diffed as prose
+*.unity   text eol=lf linguist-language=Unity-YAML
+*.prefab  text eol=lf linguist-language=Unity-YAML
+*.asset   text eol=lf linguist-language=Unity-YAML
+*.mat     text eol=lf linguist-language=Unity-YAML
+*.anim    text eol=lf linguist-language=Unity-YAML
+*.controller text eol=lf linguist-language=Unity-YAML
+*.meta    text eol=lf linguist-language=Unity-YAML
+
+# Binary assets
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.psd  binary
+*.tga  binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.fbx  binary
+*.ttf  binary
+*.otf  binary
