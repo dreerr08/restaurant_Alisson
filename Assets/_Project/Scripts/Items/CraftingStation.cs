@@ -24,7 +24,7 @@ namespace AliGame.Items
 
         protected override string PromptText => "Usar " + stationType.DisplayName();
 
-        protected override bool CanInteract => craftingUI != null && !craftingUI.IsOpen;
+        protected override bool CanInteract => craftingUI != null && !craftingUI.IsBusy;
 
         protected override void Initialize()
         {

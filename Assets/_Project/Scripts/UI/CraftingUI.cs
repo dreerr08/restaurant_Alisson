@@ -19,6 +19,8 @@ namespace AliGame.UI
     public class CraftingUI : MonoBehaviour
     {
         [SerializeField] private Inventory inventory;
+        [Tooltip("Runs recipes that use the cut minigame. Found in the scene if left empty.")]
+        [SerializeField] private CutMinigame cutMinigame;
         [SerializeField] private Font font;
         [SerializeField] private List<RecipeSO> recipes = new List<RecipeSO>();
         [SerializeField, Min(0.5f)] private float uiScale = 1.45f;
@@ -57,6 +59,9 @@ namespace AliGame.UI
 
         public bool IsOpen => _open;
 
+        /// <summary>True while the panel is open or a cut minigame started from it is running.</summary>
+        public bool IsBusy => _open || (cutMinigame != null && cutMinigame.IsRunning);
+
         public StationType CurrentStation => _station;
 
         private void Awake()
@@ -69,6 +74,7 @@ namespace AliGame.UI
                 return;
             }
 
+            if (cutMinigame == null) cutMinigame = FindFirstObjectByType<CutMinigame>();
             _font = UIStyle.ResolveFont(font);
             _player = inventory.GetComponent<PlayerMovement2D>();
             EnsureEventSystem();
@@ -186,6 +192,12 @@ namespace AliGame.UI
 
         private void Craft(RecipeSO recipe)
         {
+            if (recipe.UsesCutMinigame && cutMinigame != null)
+            {
+                if (cutMinigame.Begin(recipe, _source)) Close();
+                return;
+            }
+
             if (!inventory.Craft(recipe, _station)) return;
 
             if (_source != null)

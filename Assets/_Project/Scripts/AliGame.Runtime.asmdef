@@ -3,6 +3,7 @@
     "rootNamespace": "AliGame",
     "references": [
         "Unity.InputSystem",
+        "Unity.Cinemachine",
         "UnityEngine.UI"
     ],
     "includePlatforms": [],

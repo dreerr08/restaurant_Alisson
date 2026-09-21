@@ -17,14 +17,18 @@ namespace AliGame.Movement
         public AnimationClip jumpBeginClip;
         public AnimationClip fallClip;
         public AnimationClip jumpLandClip;
+        [Tooltip("Cutting minigame: plays once when the key goes down, holding its last frame while the key stays held.")]
+        public AnimationClip cutStartClip;
+        [Tooltip("Cutting minigame: plays once when the key is released after a cut counted, holding its last frame.")]
+        public AnimationClip cutFinalClip;
 
         public float runThreshold = 0.1f;
         public float airborneVelocityY = 0.1f;
         public float crossFadeTime = 0.05f;
 
-        private enum State { Idle, Run, JumpBegin, Fall, Land }
+        private enum State { Idle, Run, JumpBegin, Fall, Land, CutStart, CutFinal }
 
-        private const int StateCount = 5;
+        private const int StateCount = 7;
 
         private Rigidbody2D _rb;
         private PlayerMovement2D _movement;
@@ -46,6 +50,8 @@ namespace AliGame.Movement
             _clips[(int)State.JumpBegin] = jumpBeginClip;
             _clips[(int)State.Fall] = fallClip;
             _clips[(int)State.Land] = jumpLandClip;
+            _clips[(int)State.CutStart] = cutStartClip;
+            _clips[(int)State.CutFinal] = cutFinalClip;
 
             _graph = PlayableGraph.Create("PlayerAnimation2D");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
@@ -100,10 +106,37 @@ namespace AliGame.Movement
                     if (!grounded) Enter(velocity.y > 0f ? State.JumpBegin : State.Fall);
                     else if (moving || elapsed >= LengthOf(State.Land)) Enter(moving ? State.Run : State.Idle);
                     break;
+
+                case State.CutStart:
+                case State.CutFinal:
+                    break;
             }
 
             LoopCurrentClip();
             FadeWeights();
+        }
+
+        /// <summary>Length in seconds of the Cut Final clip (0 if it is not assigned).</summary>
+        public float CutStartLength => LengthOf(State.CutStart);
+
+        public float CutFinalLength => LengthOf(State.CutFinal);
+
+        /// <summary>Plays the cut-start clip once and holds its last frame. Call StopCut to hand control back to movement.</summary>
+        public void PlayCutStart()
+        {
+            if (cutStartClip != null) Enter(State.CutStart);
+        }
+
+        /// <summary>Plays the cut-finish clip once and holds its last frame.</summary>
+        public void PlayCutFinal()
+        {
+            if (cutFinalClip != null) Enter(State.CutFinal);
+        }
+
+        /// <summary>Leaves the cut poses; the next Update picks Idle, Run or an air state again.</summary>
+        public void StopCut()
+        {
+            if (_state == State.CutStart || _state == State.CutFinal) Enter(State.Idle);
         }
 
         private void Enter(State next)
@@ -113,7 +146,10 @@ namespace AliGame.Movement
 
             int index = (int)next;
             if (_clips[index] != null)
+            {
                 _playables[index].SetTime(0d);
+                _playables[index].SetSpeed(1d);
+            }
         }
 
         private float LengthOf(State state)
@@ -126,6 +162,12 @@ namespace AliGame.Movement
         {
             if (_state == State.JumpBegin || _state == State.Land) return;
 
+            if (_state == State.CutStart || _state == State.CutFinal)
+            {
+                HoldLastFrame((int)_state);
+                return;
+            }
+
             int index = (int)_state;
             AnimationClip clip = _clips[index];
             if (clip == null || clip.length <= 0f) return;
@@ -133,6 +175,23 @@ namespace AliGame.Movement
             double time = _playables[index].GetTime();
             if (time >= clip.length)
                 _playables[index].SetTime(time % clip.length);
+        }
+
+        /// <summary>
+        /// Freezes a one-shot clip on its last frame. The playable is paused (speed 0) one step before the end, because
+        /// these clips are flagged as looping and one evaluation past the end would flash the first frame.
+        /// </summary>
+        private void HoldLastFrame(int index)
+        {
+            AnimationClip clip = _clips[index];
+            if (clip == null || clip.length <= 0f) return;
+
+            double last = clip.length - 0.001d;
+            if (_playables[index].GetTime() + Time.deltaTime >= last)
+            {
+                _playables[index].SetTime(last);
+                _playables[index].SetSpeed(0d);
+            }
         }
 
         private void FadeWeights()

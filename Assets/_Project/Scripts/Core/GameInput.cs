@@ -51,6 +51,16 @@ namespace AliGame.Core
 
         public static bool InteractPressed => Pressed(ref _interact);
 
+        /// <summary>True while the interact key is held down.</summary>
+        public static bool InteractHeld
+        {
+            get
+            {
+                EnsureLoaded();
+                return _interact.IsPressed();
+            }
+        }
+
         public static bool InventoryPressed => Pressed(ref _inventory);
 
         /// <summary>Opens or closes the wish journal.</summary>
