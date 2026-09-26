@@ -33,6 +33,10 @@ namespace AliGame.Items
 
         public bool CanCraft(RecipeSO recipe, StationType station) => Model.CanCraft(recipe, station);
 
+        public bool CanCraft(RecipeSO recipe, StationType station, int quantity) => Model.CanCraft(recipe, station, quantity);
+
+        public int MaxCraftable(RecipeSO recipe) => Model.MaxCraftable(recipe);
+
         public bool Craft(RecipeSO recipe, StationType station) => Model.Craft(recipe, station);
 
         public bool CanAdd(ItemSO item) => Model.CanAdd(item);

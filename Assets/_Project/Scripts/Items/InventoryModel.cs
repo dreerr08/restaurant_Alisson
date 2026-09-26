@@ -84,9 +84,12 @@ namespace AliGame.Items
         }
 
         /// <summary>True if the recipe belongs to this station and all its ingredients are in the inventory.</summary>
-        public bool CanCraft(RecipeSO recipe, StationType station)
+        public bool CanCraft(RecipeSO recipe, StationType station) => CanCraft(recipe, station, 1);
+
+        /// <summary>True if the recipe belongs to this station and the inventory has enough for Quantity crafts at once.</summary>
+        public bool CanCraft(RecipeSO recipe, StationType station, int quantity)
         {
-            if (recipe == null || recipe.Station != station) return false;
+            if (recipe == null || recipe.Station != station || quantity < 1) return false;
             if (recipe.Result == null || recipe.Ingredients.Count == 0) return false;
 
             Dictionary<ItemSO, int> needs = SumIngredients(recipe);
@@ -94,9 +97,23 @@ namespace AliGame.Items
 
             foreach (KeyValuePair<ItemSO, int> need in needs)
             {
-                if (Count(need.Key) < need.Value) return false;
+                if (Count(need.Key) < need.Value * quantity) return false;
             }
             return true;
+        }
+
+        /// <summary>How many times in a row this recipe could be crafted with what is in the inventory right now.</summary>
+        public int MaxCraftable(RecipeSO recipe)
+        {
+            if (recipe == null || recipe.Result == null || recipe.Ingredients.Count == 0) return 0;
+
+            Dictionary<ItemSO, int> needs = SumIngredients(recipe);
+            if (needs == null || needs.Count == 0) return 0;
+
+            int max = int.MaxValue;
+            foreach (KeyValuePair<ItemSO, int> need in needs)
+                max = Math.Min(max, Count(need.Key) / need.Value);
+            return max;
         }
 
         /// <summary>

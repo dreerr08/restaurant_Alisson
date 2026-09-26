@@ -1,59 +1,58 @@
+using System;
 using AliGame.Core;
 using AliGame.Data;
 using AliGame.Movement;
 using AliGame.UI;
-using Unity.Cinemachine;
 using UnityEngine;
 
 namespace AliGame.Items
 {
     /// <summary>
-    /// The cutting minigame at the CutStation. Started by the crafting panel when a recipe uses it.
-    /// Hold the interact key (Cut Start plays once) until the bar is full: the screen shakes and a release window opens.
-    /// Release inside the window (Cut Release Window seconds on the recipe) and the cut counts, playing Cut Final.
-    /// Hold past the window and the cut is missed; releasing too early just resets the bar. After the recipe's Cut Count
-    /// good cuts, once the last Cut Final has played, the ingredients are consumed and the result drops from the station.
-    /// Esc cancels and consumes nothing. Needs the player's PlayerAnimation2D for the Cut Start / Cut Final clips.
+    /// The cutting minigame at the CutStation. Started by the crafting panel when a recipe uses it, for one or more
+    /// items in a row (Quantity): each item is its own full minigame, one after another, with nothing consumed until
+    /// its own last cut succeeds. If the station has a Minigame Spot, the player first walks there on their own
+    /// (IsApproaching) before the first cut can start.
+    /// Hold the interact key (Cut Start plays once) until the bar is full: a release window opens (WindowOpened).
+    /// Release inside the window (Cut Release Window seconds on the recipe) and the cut counts (CutSucceeded), playing
+    /// Cut Final. Hold past the window and the cut is missed (CutMissed); releasing too early just resets the bar.
+    /// After the recipe's Cut Count good cuts (AllFinished), once the last Cut Final has played, that item's
+    /// ingredients are consumed and it drops from the station; if more items are queued, the next one starts right away.
+    /// Esc cancels the whole queue; only cuts already dropped are kept.
+    /// Needs the player's PlayerAnimation2D for the Cut Start / Cut Final clips. Has no juice of its own: put a
+    /// CutFeedbackFx next to it for the camera shake, screen flash and particles.
     /// </summary>
     public class CutMinigame : MonoBehaviour
     {
         [SerializeField] private Inventory inventory;
-
-        [Header("Screen shake: when")]
-        [Tooltip("Shake when the bar fills and the release window opens (the signal to let go).")]
-        [SerializeField] private bool shakeWhenWindowOpens = true;
-        [Tooltip("Shake again when a cut counts.")]
-        [SerializeField] private bool shakeOnSuccess;
-        [Tooltip("Shake when the window is missed.")]
-        [SerializeField] private bool shakeOnMiss;
-
-        [Header("Screen shake: how")]
-        [Tooltip("Rumble is a continuous tremble, Bump one push, Recoil a kick that settles, Explosion a big hit that fades.")]
-        [SerializeField] private CinemachineImpulseDefinition.ImpulseShapes shakeShape = CinemachineImpulseDefinition.ImpulseShapes.Rumble;
-        [Tooltip("Strength in world units. With the current zoom, 0.3 is subtle and 1 is heavy.")]
-        [SerializeField, Min(0f)] private float shakeForce = 0.6f;
-        [Tooltip("How long the shake lasts, in seconds.")]
-        [SerializeField, Min(0.05f)] private float shakeDuration = 0.4f;
-        [Tooltip("Speed of the tremble. Higher is a faster, buzzier shake.")]
-        [SerializeField, Min(0.1f)] private float shakeFrequency = 1f;
-        [Tooltip("Which axes shake. (1, 1) shakes both; (1, 0) only sideways; (0, 1) only up and down.")]
-        [SerializeField] private Vector2 shakeAxes = Vector2.one;
+        [Tooltip("Horizontal distance to the station's Minigame Spot that counts as arrived.")]
+        [SerializeField, Min(0.02f)] private float approachTolerance = 0.15f;
+        [SerializeField, Min(0.5f)] private float approachSpeed = 1f;
 
         private CutMinigameModel _model;
         private RecipeSO _recipe;
         private CraftingStation _station;
         private PlayerMovement2D _player;
         private PlayerAnimation2D _animation;
-        private CinemachineImpulseSource _impulse;
+        private Transform _approachTarget;
+        private bool _approaching;
         private bool _locked;
         private float _idleAt = -1f;
         private float _dropAt = -1f;
 
-        /// <summary>True from Begin until the last cut has finished playing or the minigame is cancelled.</summary>
+        /// <summary>True from Begin until the whole queue has finished dropping or been cancelled.</summary>
         public bool IsRunning { get; private set; }
 
-        /// <summary>The player being controlled; the progress bar follows it.</summary>
+        /// <summary>True while the player is walking to the station's Minigame Spot, before the first cut.</summary>
+        public bool IsApproaching => _approaching;
+
+        /// <summary>The player being controlled; feedback effects follow it.</summary>
         public Transform PlayerTransform => inventory != null ? inventory.transform : null;
+
+        /// <summary>How many items were queued when Begin was called.</summary>
+        public int BatchTotal { get; private set; }
+
+        /// <summary>How many items, including the one being cut now, are left to drop.</summary>
+        public int BatchRemaining { get; private set; }
 
         public int CutsDone => _model != null ? _model.CutsDone : 0;
 
@@ -85,6 +84,18 @@ namespace AliGame.Items
         /// <summary>True after the window was missed, until the key is released.</summary>
         public bool Missed => _model != null && _model.Phase == CutPhase.Missed;
 
+        /// <summary>The bar just filled and the release window opened: the signal to let go.</summary>
+        public event Action WindowOpened;
+
+        /// <summary>A cut counted. The argument is how many cuts are done now on the current item.</summary>
+        public event Action<int> CutSucceeded;
+
+        /// <summary>The key was held past the window: the cut did not count.</summary>
+        public event Action CutMissed;
+
+        /// <summary>The current item's last cut just succeeded (fires once per item in the batch).</summary>
+        public event Action AllFinished;
+
         private void Awake()
         {
             if (inventory == null) inventory = FindFirstObjectByType<Inventory>();
@@ -97,7 +108,6 @@ namespace AliGame.Items
 
             _player = inventory.GetComponent<PlayerMovement2D>();
             _animation = inventory.GetComponent<PlayerAnimation2D>();
-            SetupShake();
         }
 
         private void OnEnable() => UIPanels.Opened += OnOtherPanelOpened;
@@ -108,22 +118,22 @@ namespace AliGame.Items
             if (IsRunning) End();
         }
 
-        /// <summary>Starts cutting for the recipe. Nothing is consumed until the last cut.</summary>
-        public bool Begin(RecipeSO recipe, CraftingStation station)
+        /// <summary>
+        /// Queues Quantity items of the recipe. Nothing is consumed until each item's own last cut succeeds.
+        /// If the station has a Minigame Spot the player is walked there first.
+        /// </summary>
+        public bool Begin(RecipeSO recipe, CraftingStation station, int quantity = 1)
         {
             if (IsRunning || !isActiveAndEnabled || recipe == null) return false;
-            if (!inventory.CanCraft(recipe, recipe.Station)) return false;
+
+            quantity = Mathf.Max(1, quantity);
+            if (!inventory.CanCraft(recipe, recipe.Station, quantity)) return false;
 
             _recipe = recipe;
             _station = station;
+            BatchTotal = quantity;
+            BatchRemaining = quantity;
             _idleAt = _dropAt = -1f;
-            _model = new CutMinigameModel(recipe.CutHoldSeconds, recipe.CutCount, recipe.CutReleaseWindow);
-            _model.ChargeStarted += OnChargeStarted;
-            _model.ChargeAborted += OnChargeAborted;
-            _model.WindowOpened += OnWindowOpened;
-            _model.CutSucceeded += OnCutSucceeded;
-            _model.CutMissed += OnCutMissed;
-            _model.FinishedAll += OnFinishedAll;
 
             IsRunning = true;
             if (_player != null && !_locked)
@@ -131,12 +141,30 @@ namespace AliGame.Items
                 _locked = true;
                 _player.LockInput();
             }
+
+            Transform spot = station != null ? station.MinigameSpot : null;
+            if (spot != null && _player != null && Mathf.Abs(spot.position.x - _player.transform.position.x) > approachTolerance)
+            {
+                _approaching = true;
+                _approachTarget = spot;
+                _player.BeginExternalControl();
+            }
+            else
+            {
+                StartCut();
+            }
             return true;
         }
 
         private void Update()
         {
             if (!IsRunning) return;
+
+            if (_approaching)
+            {
+                UpdateApproach();
+                return;
+            }
 
             if (_dropAt >= 0f)
             {
@@ -160,6 +188,49 @@ namespace AliGame.Items
             _model.Update(GameInput.InteractHeld, Time.deltaTime);
         }
 
+        private void UpdateApproach()
+        {
+            if (GameInput.CancelPressed)
+            {
+                End();
+                return;
+            }
+
+            if (_approachTarget == null)
+            {
+                ArriveAndStartCut();
+                return;
+            }
+
+            float dx = _approachTarget.position.x - _player.transform.position.x;
+            if (Mathf.Abs(dx) <= approachTolerance)
+            {
+                ArriveAndStartCut();
+                return;
+            }
+
+            _player.SetExternalMove(Mathf.Sign(dx) * approachSpeed);
+        }
+
+        private void ArriveAndStartCut()
+        {
+            _approaching = false;
+            _approachTarget = null;
+            if (_player != null) _player.EndExternalControl();
+            StartCut();
+        }
+
+        private void StartCut()
+        {
+            _model = new CutMinigameModel(_recipe.CutHoldSeconds, _recipe.CutCount, _recipe.CutReleaseWindow);
+            _model.ChargeStarted += OnChargeStarted;
+            _model.ChargeAborted += OnChargeAborted;
+            _model.WindowOpened += HandleWindowOpened;
+            _model.CutSucceeded += HandleCutSucceeded;
+            _model.CutMissed += HandleCutMissed;
+            _model.FinishedAll += HandleFinishedAll;
+        }
+
         private void OnChargeStarted()
         {
             _idleAt = -1f;
@@ -171,28 +242,29 @@ namespace AliGame.Items
             if (_animation != null) _animation.StopCut();
         }
 
-        private void OnWindowOpened()
+        private void HandleWindowOpened()
         {
-            if (shakeWhenWindowOpens) Shake();
+            WindowOpened?.Invoke();
         }
 
-        private void OnCutSucceeded(int cutsDone)
+        private void HandleCutSucceeded(int cutsDone)
         {
-            if (shakeOnSuccess) Shake();
+            CutSucceeded?.Invoke(cutsDone);
             if (_animation == null) return;
 
             _animation.PlayCutFinal();
             _idleAt = Time.time + _animation.CutFinalLength;
         }
 
-        private void OnCutMissed()
+        private void HandleCutMissed()
         {
-            if (shakeOnMiss) Shake();
+            CutMissed?.Invoke();
             if (_animation != null) _animation.StopCut();
         }
 
-        private void OnFinishedAll()
+        private void HandleFinishedAll()
         {
+            AllFinished?.Invoke();
             float wait = _animation != null ? _animation.CutFinalLength : 0f;
             _idleAt = -1f;
             _dropAt = Time.time + wait;
@@ -201,73 +273,60 @@ namespace AliGame.Items
         private void DropResult()
         {
             _dropAt = -1f;
-            if (inventory.Craft(_recipe, _recipe.Station) && _station != null)
-                _station.SpawnCrafted(_recipe);
-            End();
+            UnsubscribeModel();
+
+            bool crafted = inventory.Craft(_recipe, _recipe.Station);
+            if (crafted && _station != null) _station.SpawnCrafted(_recipe);
+
+            if (!crafted)
+            {
+                End();
+                return;
+            }
+
+            BatchRemaining--;
+            if (BatchRemaining > 0) StartCut();
+            else End();
         }
 
         private void End()
         {
             IsRunning = false;
+            _approaching = false;
+            _approachTarget = null;
             _idleAt = _dropAt = -1f;
+            BatchRemaining = 0;
 
-            if (_model != null)
-            {
-                _model.ChargeStarted -= OnChargeStarted;
-                _model.ChargeAborted -= OnChargeAborted;
-                _model.WindowOpened -= OnWindowOpened;
-                _model.CutSucceeded -= OnCutSucceeded;
-                _model.CutMissed -= OnCutMissed;
-                _model.FinishedAll -= OnFinishedAll;
-            }
+            UnsubscribeModel();
 
             if (_animation != null) _animation.StopCut();
-            if (_locked && _player != null)
+            if (_player != null)
             {
-                _locked = false;
-                _player.UnlockInput();
+                _player.EndExternalControl();
+                if (_locked)
+                {
+                    _locked = false;
+                    _player.UnlockInput();
+                }
             }
+        }
+
+        private void UnsubscribeModel()
+        {
+            if (_model == null) return;
+
+            _model.ChargeStarted -= OnChargeStarted;
+            _model.ChargeAborted -= OnChargeAborted;
+            _model.WindowOpened -= HandleWindowOpened;
+            _model.CutSucceeded -= HandleCutSucceeded;
+            _model.CutMissed -= HandleCutMissed;
+            _model.FinishedAll -= HandleFinishedAll;
+            _model = null;
         }
 
         private void OnOtherPanelOpened(object panel)
         {
             if (IsRunning) End();
-        }
-
-        private void SetupShake()
-        {
-            _impulse = gameObject.AddComponent<CinemachineImpulseSource>();
-
-            foreach (CinemachineCamera cam in FindObjectsByType<CinemachineCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                var listener = cam.GetComponent<CinemachineImpulseListener>();
-                if (listener == null) listener = cam.gameObject.AddComponent<CinemachineImpulseListener>();
-
-                // A listener added from code starts with Gain 0 and no channel, which silently ignores every impulse.
-                listener.Gain = 1f;
-                listener.ChannelMask = 1;
-                listener.Use2DDistance = true;
-                listener.ReactionSettings.AmplitudeGain = 1f;
-                listener.ReactionSettings.FrequencyGain = 1f;
-            }
-        }
-
-        private void Shake()
-        {
-            if (_impulse == null || shakeForce <= 0f) return;
-
-            // Applied on every shake so the Inspector values can be tuned while playing.
-            CinemachineImpulseDefinition definition = _impulse.ImpulseDefinition;
-            definition.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform;
-            definition.ImpulseShape = shakeShape;
-            definition.ImpulseDuration = shakeDuration;
-            definition.FrequencyGain = shakeFrequency;
-            definition.AmplitudeGain = 1f;
-            definition.TimeEnvelope.AttackTime = 0.02f;
-            definition.TimeEnvelope.SustainTime = 0f;
-            definition.TimeEnvelope.DecayTime = shakeDuration;
-
-            _impulse.GenerateImpulseWithVelocity(new Vector3(shakeForce * shakeAxes.x, shakeForce * shakeAxes.y, 0f));
         }
     }
 }

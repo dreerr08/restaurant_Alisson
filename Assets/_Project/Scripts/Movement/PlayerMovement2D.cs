@@ -23,6 +23,8 @@ namespace AliGame.Movement
         private Vector3 _baseScale;
         private float _moveInput;
         private bool _jumpRequested;
+        private bool _externalControl;
+        private float _externalMoveInput;
 
         public bool IsGrounded { get; private set; }
 
@@ -34,6 +36,28 @@ namespace AliGame.Movement
         public void LockInput() => _inputLocks++;
 
         public void UnlockInput() => _inputLocks = Mathf.Max(0, _inputLocks - 1);
+
+        /// <summary>
+        /// While active, horizontal movement comes from SetExternalMove instead of GameInput, so code can walk the
+        /// player to a spot (e.g. before a minigame). Jumping stays off, independent of LockInput. Call EndExternalControl
+        /// when done.
+        /// </summary>
+        public void BeginExternalControl()
+        {
+            _externalControl = true;
+            _externalMoveInput = 0f;
+        }
+
+        public void EndExternalControl()
+        {
+            _externalControl = false;
+            _externalMoveInput = 0f;
+        }
+
+        public bool IsExternallyControlled => _externalControl;
+
+        /// <summary>-1 to 1. Only has an effect between BeginExternalControl and EndExternalControl.</summary>
+        public void SetExternalMove(float direction) => _externalMoveInput = Mathf.Clamp(direction, -1f, 1f);
 
         private void Awake()
         {
@@ -49,9 +73,9 @@ namespace AliGame.Movement
 
         private void Update()
         {
-            _moveInput = InputEnabled ? GameInput.Move : 0f;
+            _moveInput = _externalControl ? _externalMoveInput : (InputEnabled ? GameInput.Move : 0f);
 
-            if (!InputEnabled) _jumpRequested = false;
+            if (_externalControl || !InputEnabled) _jumpRequested = false;
             else if (GameInput.JumpPressed) _jumpRequested = true;
 
             if (_moveInput > 0.01f) Face(1f);

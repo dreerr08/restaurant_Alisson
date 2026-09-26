@@ -96,5 +96,44 @@ namespace AliGame.Tests
             Assert.IsFalse(inventory.CanCraft(emptyIngredient, StationType.Stove));
             Assert.IsFalse(inventory.CanCraft(null, StationType.Stove));
         }
+
+        [Test]
+        public void CanCraft_WithQuantity_NeedsThatManyTimesTheIngredients()
+        {
+            var inventory = new InventoryModel(4);
+            var flour = Item("Flour");
+            var dough = Item("Dough");
+            var recipe = Recipe(StationType.CutStation, dough, 1, (flour, 2));
+            inventory.Add(flour, 5);
+
+            Assert.IsTrue(inventory.CanCraft(recipe, StationType.CutStation, 2), "2 x 2 flour = 4, and there are 5");
+            Assert.IsFalse(inventory.CanCraft(recipe, StationType.CutStation, 3), "3 x 2 flour = 6, more than the 5 there are");
+            Assert.IsFalse(inventory.CanCraft(recipe, StationType.CutStation, 0), "a quantity below 1 is invalid");
+        }
+
+        [Test]
+        public void MaxCraftable_IsLimitedByTheScarcestIngredient()
+        {
+            var inventory = new InventoryModel(4);
+            var flour = Item("Flour");
+            var egg = Item("Egg");
+            var dough = Item("Dough");
+            var recipe = Recipe(StationType.CutStation, dough, 1, (flour, 2), (egg, 3));
+            inventory.Add(flour, 7);
+            inventory.Add(egg, 3);
+
+            Assert.AreEqual(1, inventory.MaxCraftable(recipe), "7 flour allows 3, but only 3 eggs allow 1");
+        }
+
+        [Test]
+        public void MaxCraftable_IsZeroWithNothingInInventory()
+        {
+            var inventory = new InventoryModel(4);
+            var flour = Item("Flour");
+            var dough = Item("Dough");
+            var recipe = Recipe(StationType.CutStation, dough, 1, (flour, 2));
+
+            Assert.AreEqual(0, inventory.MaxCraftable(recipe));
+        }
     }
 }

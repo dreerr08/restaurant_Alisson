@@ -13,6 +13,8 @@ namespace AliGame.Items
     {
         [SerializeField] private StationType stationType;
         [SerializeField] private CraftingUI craftingUI;
+        [Tooltip("Where the player stands to use a recipe that needs a minigame (e.g. cutting). Left empty, the minigame starts wherever the player already is.")]
+        [SerializeField] private Transform minigameSpot;
 
         [Header("Crafted item spawn")]
         [SerializeField] private Vector2 spawnOffset = new Vector2(0f, 1.4f);
@@ -21,6 +23,9 @@ namespace AliGame.Items
         [SerializeField, Min(0f)] private float collectDelay = 0.8f;
 
         public StationType Type => stationType;
+
+        /// <summary>The fixed spot the player must reach before a recipe's minigame starts, or null for none.</summary>
+        public Transform MinigameSpot => minigameSpot;
 
         protected override string PromptText => "Usar " + stationType.DisplayName();
 

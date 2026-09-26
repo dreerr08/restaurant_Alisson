@@ -43,6 +43,10 @@ namespace AliGame.UI
             public Text Ingredients;
             public Button Button;
             public Text ButtonLabel;
+            public Text QuantityLabel;
+            public Button QuantityMinus;
+            public Button QuantityPlus;
+            public int Quantity = 1;
         }
 
         private readonly List<RecipeRow> _rows = new List<RecipeRow>();
@@ -170,31 +174,55 @@ namespace AliGame.UI
         {
             foreach (RecipeRow row in _rows)
             {
-                bool canCraft = inventory.CanCraft(row.Recipe, _station);
+                bool usesQuantity = row.QuantityLabel != null;
+                if (usesQuantity)
+                {
+                    int max = Mathf.Max(1, inventory.MaxCraftable(row.Recipe));
+                    row.Quantity = Mathf.Clamp(row.Quantity, 1, max);
+                }
+
+                bool canCraft = usesQuantity
+                    ? inventory.CanCraft(row.Recipe, _station, row.Quantity)
+                    : inventory.CanCraft(row.Recipe, _station);
                 var text = new StringBuilder();
 
                 foreach (RecipeSO.Ingredient ingredient in row.Recipe.Ingredients)
                 {
                     int have = inventory.Count(ingredient.Item);
-                    bool enough = have >= ingredient.Amount;
+                    int needed = usesQuantity ? ingredient.Amount * row.Quantity : ingredient.Amount;
+                    bool enough = have >= needed;
 
                     if (text.Length > 0) text.Append("    ");
                     text.Append("<color=").Append(enough ? EnoughColor : MissingColor).Append('>')
-                        .Append(ingredient.Item.DisplayName).Append(' ').Append(have).Append('/').Append(ingredient.Amount)
+                        .Append(ingredient.Item.DisplayName).Append(' ').Append(have).Append('/').Append(needed)
                         .Append("</color>");
                 }
 
                 row.Ingredients.text = text.ToString();
                 row.Button.interactable = canCraft;
                 row.ButtonLabel.color = canCraft ? UIStyle.TextDark : UIStyle.TextHint;
+
+                if (usesQuantity)
+                {
+                    row.QuantityLabel.text = row.Quantity.ToString();
+                    row.QuantityMinus.interactable = row.Quantity > 1;
+                    row.QuantityPlus.interactable = row.Quantity < Mathf.Max(1, inventory.MaxCraftable(row.Recipe));
+                }
             }
         }
 
-        private void Craft(RecipeSO recipe)
+        private void ChangeQuantity(RecipeRow row, int delta)
+        {
+            int max = Mathf.Max(1, inventory.MaxCraftable(row.Recipe));
+            row.Quantity = Mathf.Clamp(row.Quantity + delta, 1, max);
+            Refresh();
+        }
+
+        private void Craft(RecipeSO recipe, RecipeRow row)
         {
             if (recipe.UsesCutMinigame && cutMinigame != null)
             {
-                if (cutMinigame.Begin(recipe, _source)) Close();
+                if (cutMinigame.Begin(recipe, _source, row.Quantity)) Close();
                 return;
             }
 
@@ -373,7 +401,7 @@ namespace AliGame.UI
             tileRect.sizeDelta = new Vector2(76f, 76f);
             tileRect.anchoredPosition = new Vector2(14f, 0f);
 
-            Image icon = UIStyle.CreateImage(tileRect, "Icon", null, result.Tint);
+            Image icon = UIStyle.CreateImage(tileRect, "Icon", null, Color.white);
             icon.sprite = result.Icon;
             icon.enabled = result.Icon != null;
             icon.preserveAspect = true;
@@ -386,12 +414,15 @@ namespace AliGame.UI
                 initial.text = result.DisplayName.Length > 0 ? result.DisplayName.Substring(0, 1).ToUpperInvariant() : "?";
             }
 
+            bool usesQuantity = recipe.UsesCutMinigame;
+            float textRightMargin = usesQuantity ? -276f : -160f;
+
             Text nameText = UIStyle.CreateText(rowRect, "Name", _font, 26, FontStyle.Bold, UIStyle.TextDark, TextAnchor.LowerLeft);
             var nameRect = nameText.rectTransform;
             nameRect.anchorMin = new Vector2(0f, 0.5f);
             nameRect.anchorMax = new Vector2(1f, 1f);
             nameRect.offsetMin = new Vector2(106f, 0f);
-            nameRect.offsetMax = new Vector2(-160f, -10f);
+            nameRect.offsetMax = new Vector2(textRightMargin, -10f);
             nameText.text = recipe.ResultAmount > 1 ? recipe.DisplayName + " x" + recipe.ResultAmount : recipe.DisplayName;
 
             Text ingredients = UIStyle.CreateText(rowRect, "Ingredients", _font, 20, FontStyle.Bold, UIStyle.TextSoft, TextAnchor.UpperLeft);
@@ -400,7 +431,7 @@ namespace AliGame.UI
             ingredientsRect.anchorMin = new Vector2(0f, 0f);
             ingredientsRect.anchorMax = new Vector2(1f, 0.5f);
             ingredientsRect.offsetMin = new Vector2(106f, 10f);
-            ingredientsRect.offsetMax = new Vector2(-160f, -2f);
+            ingredientsRect.offsetMax = new Vector2(textRightMargin, -2f);
 
             Image buttonImage = UIStyle.CreateImage(rowRect, "CraftButton", UIStyle.Rounded(18), Color.white);
             buttonImage.raycastTarget = true;
@@ -419,13 +450,69 @@ namespace AliGame.UI
             colors.disabledColor = UIStyle.SlotEmpty;
             colors.fadeDuration = 0.08f;
             button.colors = colors;
-            button.onClick.AddListener(() => Craft(recipe));
 
             Text label = UIStyle.CreateText(buttonRect, "Label", _font, 24, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleCenter);
             UIStyle.Stretch(label.rectTransform);
-            label.text = "Criar";
+            label.text = usesQuantity ? "Cortar" : "Criar";
 
-            return new RecipeRow { Recipe = recipe, Ingredients = ingredients, Button = button, ButtonLabel = label };
+            var row = new RecipeRow { Recipe = recipe, Ingredients = ingredients, Button = button, ButtonLabel = label };
+            button.onClick.AddListener(() => Craft(recipe, row));
+
+            if (usesQuantity) BuildQuantityStepper(rowRect, row);
+
+            return row;
+        }
+
+        private void BuildQuantityStepper(RectTransform rowRect, RecipeRow row)
+        {
+            const float stepperWidth = 116f;
+            const float buttonSize = 36f;
+
+            var stepperObject = new GameObject("Quantity", typeof(RectTransform));
+            stepperObject.transform.SetParent(rowRect, false);
+            var stepperRect = (RectTransform)stepperObject.transform;
+            stepperRect.anchorMin = stepperRect.anchorMax = stepperRect.pivot = new Vector2(1f, 0.5f);
+            stepperRect.sizeDelta = new Vector2(stepperWidth, buttonSize);
+            stepperRect.anchoredPosition = new Vector2(-16f - 132f - 12f, 0f);
+
+            row.QuantityMinus = BuildStepperButton(stepperRect, "Minus", "-", new Vector2(0f, 0.5f), buttonSize);
+            row.QuantityMinus.onClick.AddListener(() => ChangeQuantity(row, -1));
+
+            row.QuantityLabel = UIStyle.CreateText(stepperRect, "Count", _font, 24, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleCenter);
+            var countRect = row.QuantityLabel.rectTransform;
+            countRect.anchorMin = new Vector2(0f, 0f);
+            countRect.anchorMax = new Vector2(1f, 1f);
+            countRect.offsetMin = new Vector2(buttonSize, 0f);
+            countRect.offsetMax = new Vector2(-buttonSize, 0f);
+            row.QuantityLabel.text = "1";
+
+            row.QuantityPlus = BuildStepperButton(stepperRect, "Plus", "+", new Vector2(1f, 0.5f), buttonSize);
+            row.QuantityPlus.onClick.AddListener(() => ChangeQuantity(row, 1));
+        }
+
+        private Button BuildStepperButton(RectTransform parent, string name, string symbol, Vector2 anchor, float size)
+        {
+            Image image = UIStyle.CreateImage(parent, name, UIStyle.Rounded(12), UIStyle.Tray);
+            image.raycastTarget = true;
+            var rect = (RectTransform)image.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
+            rect.sizeDelta = new Vector2(size, size);
+
+            var button = image.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            var colors = button.colors;
+            colors.normalColor = UIStyle.Tray;
+            colors.highlightedColor = UIStyle.Accent;
+            colors.pressedColor = UIStyle.Hex("#D48E22");
+            colors.disabledColor = UIStyle.SlotEmpty;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+
+            Text label = UIStyle.CreateText(rect, "Symbol", _font, 22, FontStyle.Bold, UIStyle.TextDark, TextAnchor.MiddleCenter);
+            UIStyle.Stretch(label.rectTransform);
+            label.text = symbol;
+
+            return button;
         }
     }
 }
