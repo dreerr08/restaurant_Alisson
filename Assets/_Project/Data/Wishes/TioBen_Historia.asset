@@ -13,6 +13,9 @@ MonoBehaviour:
   m_Name: TioBen_Historia
   m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.NpcStorySO
   character: {fileID: 11400000, guid: 3bad4e0fce8fe5a4e88a48519dd04ce6, type: 2}
+  introDialogues:
+  - {fileID: 11400000, guid: 1c63b413259d9e04ddb00761b96cb7fe, type: 2}
+  - {fileID: 11400000, guid: 4f7e122dc05d0d1ea529c61d212beffb, type: 2}
   wishes:
   - {fileID: 11400000, guid: 5cdc052c693935546b91c584116e0784, type: 2}
   - {fileID: 11400000, guid: 52eecd989e6dcd34194a146d3920726f, type: 2}

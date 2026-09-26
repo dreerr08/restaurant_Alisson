@@ -10,7 +10,9 @@ namespace AliGame.Wishes
         Reminder,
         Delivery,
         Farewell,
-        Idle
+        Idle,
+        /// <summary>A talk that builds the relationship. The character asks for nothing until these are done.</summary>
+        Intro
     }
 
     public readonly struct WishDialogueResult
@@ -31,7 +33,9 @@ namespace AliGame.Wishes
 
     /// <summary>
     /// Picks which dialogue a character should say right now, from their story, the journal and what the
-    /// player is carrying. Plain logic: no scene, no UI, no input.
+    /// player is carrying. Before their first wish they play their introduction talks in order; a wish with a
+    /// start trigger is only asked for once that trigger has been raised (until then they make small talk).
+    /// Plain logic: no scene, no UI, no input.
     /// </summary>
     public static class WishDialogueResolver
     {
@@ -55,6 +59,14 @@ namespace AliGame.Wishes
 
             if (current != null)
             {
+                // First they get to know the player; only then can an outside event make them ask.
+                DialogueSO intro = journal.PeekIntro(story);
+                if (intro != null)
+                    return new WishDialogueResult(intro, WishDialogueKind.Intro);
+
+                if (current.HasStartTrigger && !journal.IsTriggerRaised(current.StartTrigger))
+                    return Idle(story, journal);
+
                 if (current.OfferDialogue != null)
                     return new WishDialogueResult(current.OfferDialogue, WishDialogueKind.Offer, current);
 

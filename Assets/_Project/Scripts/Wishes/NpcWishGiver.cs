@@ -6,9 +6,10 @@ using UnityEngine;
 namespace AliGame.Wishes
 {
     /// <summary>
-    /// Puts a character's story behind their DialogueTrigger: what they say follows what they have asked for
-    /// and what the player is carrying. When the delivery dialogue ends, the items change hands, the wish is
-    /// completed and any reward is spawned in the world.
+    /// Puts a character's story behind their DialogueTrigger: what they say follows how well they know the player,
+    /// what they have asked for and what the player is carrying. Each introduction talk that ends brings them
+    /// closer; only after all of them, and once the wish's start trigger has been raised, do they ask. When the
+    /// delivery dialogue ends, the items change hands, the wish is completed and any reward is spawned in the world.
     /// </summary>
     [RequireComponent(typeof(DialogueTrigger))]
     public class NpcWishGiver : MonoBehaviour, IDialogueSource
@@ -30,6 +31,9 @@ namespace AliGame.Wishes
 
         /// <summary>They have something new to ask for.</summary>
         public bool HasNewWish => Resolve().Kind == WishDialogueKind.Offer;
+
+        /// <summary>They are still getting to know the player: there is an introduction talk waiting.</summary>
+        public bool WantsToTalk => Resolve().Kind == WishDialogueKind.Intro;
 
         /// <summary>The player is carrying everything this character is waiting for.</summary>
         public bool CanDeliver => Resolve().Kind == WishDialogueKind.Delivery;
@@ -77,6 +81,10 @@ namespace AliGame.Wishes
 
             switch (_pending.Kind)
             {
+                case WishDialogueKind.Intro:
+                    journal.Model.MarkIntroSeen(story);
+                    break;
+
                 case WishDialogueKind.Offer:
                     journal.Model.Offer(story);
                     break;

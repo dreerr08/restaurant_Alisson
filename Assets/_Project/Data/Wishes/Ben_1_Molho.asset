@@ -17,6 +17,7 @@ MonoBehaviour:
   requirements:
   - item: {fileID: 11400000, guid: 7c630eb603a8507468c253aa18c1b025, type: 2}
     amount: 1
+  startTrigger: dia-2
   offerDialogue: {fileID: 11400000, guid: 0e6897f1a639c7b4d800980019e1eb84, type: 2}
   reminderDialogues:
   - {fileID: 11400000, guid: 2b3530702f984cb48aa9035250626e09, type: 2}

@@ -5,13 +5,16 @@ using AliGame.Data;
 namespace AliGame.Wishes
 {
     /// <summary>
-    /// Tracks how far each character's story has gone: which wish is current, whether it has been asked for yet,
-    /// and which reminder comes next. Plain logic, so it can be tested and saved without the scene.
+    /// Tracks how far each character's story has gone: how well they know the player, which wish is current,
+    /// whether it has been asked for yet, and which reminder comes next. It also keeps the triggers that have been
+    /// raised, the outside events characters wait for before asking. Plain logic, so it can be tested and saved
+    /// without the scene.
     /// </summary>
     public sealed class WishJournalModel
     {
         private sealed class Entry
         {
+            public int IntroSeen;
             public int Completed;
             public bool Offered;
             public int ReminderIndex;
@@ -20,8 +23,21 @@ namespace AliGame.Wishes
 
         private readonly Dictionary<NpcStorySO, Entry> _entries = new Dictionary<NpcStorySO, Entry>();
         private readonly List<NpcStorySO> _order = new List<NpcStorySO>();
+        private readonly HashSet<string> _triggers = new HashSet<string>();
 
         public event Action Changed;
+
+        /// <summary>A trigger was raised for the first time. The argument is its id.</summary>
+        public event Action<string> TriggerRaised;
+
+        /// <summary>The player has now been through every introduction talk of the character.</summary>
+        public event Action<NpcStorySO> StoryAcquainted;
+
+        /// <summary>The id of the trigger raised when a wish is delivered.</summary>
+        public static string WishCompleteTrigger(WishSO wish) => "wish-complete:" + wish.name;
+
+        /// <summary>The id of the trigger raised when the last wish of a story is delivered.</summary>
+        public static string StoryCompleteTrigger(NpcStorySO story) => "story-complete:" + story.Id;
 
         /// <summary>The character asked for something and it went into the journal.</summary>
         public event Action<NpcStorySO, WishSO> WishAccepted;
@@ -63,6 +79,69 @@ namespace AliGame.Wishes
 
         public int CompletedCount(NpcStorySO story) => story != null ? GetOrCreate(story).Completed : 0;
 
+        /// <summary>
+        /// True once the player has been through all the introduction talks of the character (or they have none).
+        /// Until then they do not ask for anything.
+        /// </summary>
+        public bool IsAcquainted(NpcStorySO story)
+        {
+            return story == null || NextIntroIndex(story, GetOrCreate(story)) < 0;
+        }
+
+        /// <summary>The introduction talk that should play next, without consuming it. Null once they know each other.</summary>
+        public DialogueSO PeekIntro(NpcStorySO story)
+        {
+            if (story == null) return null;
+
+            int index = NextIntroIndex(story, GetOrCreate(story));
+            return index >= 0 ? story.IntroDialogues[index] : null;
+        }
+
+        /// <summary>The player finished the introduction talk that was next; the following one is up next.</summary>
+        public void MarkIntroSeen(NpcStorySO story)
+        {
+            if (story == null) return;
+
+            Entry entry = GetOrCreate(story);
+            int index = NextIntroIndex(story, entry);
+            if (index < 0) return;
+
+            entry.IntroSeen = index + 1;
+            Changed?.Invoke();
+            if (NextIntroIndex(story, entry) < 0) StoryAcquainted?.Invoke(story);
+        }
+
+        /// <summary>
+        /// Raises an outside event that characters may be waiting for. Raising the same id again does nothing.
+        /// A blank id is ignored.
+        /// </summary>
+        public void RaiseTrigger(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
+            string trimmed = id.Trim();
+            if (!_triggers.Add(trimmed)) return;
+
+            TriggerRaised?.Invoke(trimmed);
+            Changed?.Invoke();
+        }
+
+        /// <summary>True if that trigger has been raised. A blank id is never raised (use the wish's HasStartTrigger first).</summary>
+        public bool IsTriggerRaised(string id)
+        {
+            return !string.IsNullOrWhiteSpace(id) && _triggers.Contains(id.Trim());
+        }
+
+        private static int NextIntroIndex(NpcStorySO story, Entry entry)
+        {
+            IReadOnlyList<DialogueSO> intros = story.IntroDialogues;
+            for (int i = entry.IntroSeen; i < intros.Count; i++)
+            {
+                if (intros[i] != null) return i;
+            }
+            return -1;
+        }
+
         /// <summary>Marks the current wish as asked for, so from now on the character reminds instead of offering.</summary>
         public void Offer(NpcStorySO story)
         {
@@ -90,7 +169,11 @@ namespace AliGame.Wishes
             entry.ReminderIndex = 0;
 
             WishCompleted?.Invoke(story, wish);
-            if (CurrentWish(story) == null) StoryCompleted?.Invoke(story);
+            bool storyDone = CurrentWish(story) == null;
+            if (storyDone) StoryCompleted?.Invoke(story);
+
+            RaiseTrigger(WishCompleteTrigger(wish));
+            if (storyDone) RaiseTrigger(StoryCompleteTrigger(story));
             Changed?.Invoke();
             return wish;
         }

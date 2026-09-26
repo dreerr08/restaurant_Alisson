@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 942acb0052985e7478c1e23feef0d44c, type: 3}
+  m_Name: Ben_Intro_1
+  m_EditorClassIdentifier: AliGame.Runtime::AliGame.Data.DialogueSO
+  defaultSpeaker: {fileID: 11400000, guid: 3bad4e0fce8fe5a4e88a48519dd04ce6, type: 2}
+  lines:
+  - speaker: {fileID: 0}
+    text: "Chegou de mansinho, hein? Senta a\xED um minuto, sobrinho."
+    choices: []
+    eventId: 
+  - speaker: {fileID: 0}
+    text: "Faz tempo que a gente n\xE3o conversa direito. Eu fico aqui vendo o movimento do restaurante e pensando na vida."
+    choices: []
+    eventId: 
+  - speaker: {fileID: 0}
+    text: "Me conta: voc\xEA ainda cozinha como sua bisav\xF3 ensinou, ou inventou moda?"
+    choices: []
+    eventId: 

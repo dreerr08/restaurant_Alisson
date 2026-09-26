@@ -6,8 +6,9 @@ using UnityEngine.UI;
 namespace AliGame.Wishes
 {
     /// <summary>
-    /// The bubble above a character: a mark when they have something new to ask for, and the icon of what they
-    /// are waiting for once you are carrying it. Put it on the NPC, next to the NpcWishGiver.
+    /// The bubble above a character: a mark when they have something new to ask for, the icon of what they
+    /// are waiting for once you are carrying it, and a quiet "..." while they still want to talk and get to know
+    /// you. Put it on the NPC, next to the NpcWishGiver.
     /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(NpcWishGiver))]
@@ -15,7 +16,7 @@ namespace AliGame.Wishes
     {
         private const string CanvasName = "WishBubble";
 
-        private enum Mode { Hidden, NewWish, ReadyToDeliver }
+        private enum Mode { Hidden, NewWish, ReadyToDeliver, WantsToTalk }
 
         [Header("Placement")]
         [SerializeField] private Vector2 offset = new Vector2(0f, 2.8f);
@@ -24,7 +25,11 @@ namespace AliGame.Wishes
         [Header("Look")]
         [SerializeField] private Color newWishColor = new Color(0.94f, 0.66f, 0.23f, 1f);
         [SerializeField] private Color readyColor = new Color(0.31f, 0.62f, 0.25f, 1f);
+        [SerializeField] private Color talkColor = new Color(0.55f, 0.72f, 0.88f, 1f);
         [SerializeField] private string newWishSymbol = "!";
+        [SerializeField] private string talkSymbol = "...";
+        [Tooltip("Show a bubble while they are waiting to get to know you, so it is clear they want to talk.")]
+        [SerializeField] private bool showWhenWantsToTalk = true;
         [SerializeField, Min(8)] private int symbolSize = 40;
 
         [Header("Motion")]
@@ -125,6 +130,7 @@ namespace AliGame.Wishes
             WishSO wish = _giver.ActiveWish;
             Mode wanted = _giver.CanDeliver ? Mode.ReadyToDeliver
                 : _giver.HasNewWish ? Mode.NewWish
+                : showWhenWantsToTalk && _giver.WantsToTalk ? Mode.WantsToTalk
                 : Mode.Hidden;
 
             if (wanted != _mode) SetMode(wanted, wish);
@@ -140,7 +146,8 @@ namespace AliGame.Wishes
             if (mode == Mode.Hidden) return;
 
             bool ready = mode == Mode.ReadyToDeliver;
-            _background.color = ready ? readyColor : newWishColor;
+            bool talk = mode == Mode.WantsToTalk;
+            _background.color = ready ? readyColor : talk ? talkColor : newWishColor;
 
             ItemSO first = null;
             if (ready && wish != null && wish.Requirements.Count > 0) first = wish.Requirements[0].Item;
@@ -150,11 +157,11 @@ namespace AliGame.Wishes
             if (showIcon)
             {
                 _icon.sprite = first.Icon;
-                _icon.color = first.Tint;
+                _icon.color = Color.white;
             }
 
             _symbol.enabled = !showIcon;
-            _symbol.text = ready ? "!" : newWishSymbol;
+            _symbol.text = ready ? "!" : talk ? talkSymbol : newWishSymbol;
         }
 
         private void Apply()

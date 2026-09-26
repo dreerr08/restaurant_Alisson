@@ -122,7 +122,7 @@ namespace AliGame.Tests
             return wish;
         }
 
-        protected NpcStorySO Story(DialogueCharacterSO character, WishSO[] wishes, DialogueSO[] idleDialogues = null, DialogueSO farewell = null)
+        protected NpcStorySO Story(DialogueCharacterSO character, WishSO[] wishes, DialogueSO[] idleDialogues = null, DialogueSO farewell = null, DialogueSO[] introDialogues = null)
         {
             var story = Track(ScriptableObject.CreateInstance<NpcStorySO>());
             var so = new SerializedObject(story);
@@ -139,8 +139,20 @@ namespace AliGame.Tests
             for (int i = 0; i < idleList.arraySize; i++)
                 idleList.GetArrayElementAtIndex(i).objectReferenceValue = idleDialogues[i];
 
+            SerializedProperty introList = so.FindProperty("introDialogues");
+            introList.arraySize = introDialogues != null ? introDialogues.Length : 0;
+            for (int i = 0; i < introList.arraySize; i++)
+                introList.GetArrayElementAtIndex(i).objectReferenceValue = introDialogues[i];
+
             so.ApplyModifiedPropertiesWithoutUndo();
             return story;
+        }
+
+        protected void SetStartTrigger(WishSO wish, string trigger)
+        {
+            var so = new SerializedObject(wish);
+            so.FindProperty("startTrigger").stringValue = trigger;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         protected T Track<T>(T created) where T : Object

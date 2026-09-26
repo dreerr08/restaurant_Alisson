@@ -16,6 +16,10 @@ namespace AliGame.Data
         [SerializeField, TextArea(2, 4)] private string note;
         [SerializeField] private List<ItemAmount> requirements = new List<ItemAmount>();
 
+        [Header("Start")]
+        [Tooltip("The outside event that lets them ask for this wish: the id of a trigger raised by a day set in the WishJournal, a StoryTriggerZone, another story or wish finishing ('story-complete:<story name>', 'wish-complete:<wish name>')... Empty means nothing outside is needed. The introduction talks must be done first either way.")]
+        [SerializeField] private string startTrigger;
+
         [Header("Dialogues")]
         [Tooltip("Played the first time they ask. When it ends the wish goes into the journal.")]
         [SerializeField] private DialogueSO offerDialogue;
@@ -31,6 +35,12 @@ namespace AliGame.Data
         public string Title => string.IsNullOrEmpty(title) ? name : title;
         public string Note => note ?? string.Empty;
         public IReadOnlyList<ItemAmount> Requirements => requirements;
+
+        /// <summary>The trigger that must be raised before they ask, trimmed. Empty when none is needed.</summary>
+        public string StartTrigger => string.IsNullOrWhiteSpace(startTrigger) ? string.Empty : startTrigger.Trim();
+
+        public bool HasStartTrigger => StartTrigger.Length > 0;
+
         public DialogueSO OfferDialogue => offerDialogue;
         public IReadOnlyList<DialogueSO> ReminderDialogues => reminderDialogues;
         public DialogueSO DeliveryDialogue => deliveryDialogue;
