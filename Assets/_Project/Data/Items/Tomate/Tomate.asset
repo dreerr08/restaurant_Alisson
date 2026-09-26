@@ -15,6 +15,5 @@ MonoBehaviour:
   displayName: Tomate
   description: Tomate maduro e suculento.
   icon: {fileID: 8236432160196758994, guid: a6649947df23a034ab9425fc90a87ef9, type: 3}
-  tint: {r: 0.9, g: 0.2, b: 0.15, a: 1}
   pickupPrefab: {fileID: 0}
   maxStack: 99

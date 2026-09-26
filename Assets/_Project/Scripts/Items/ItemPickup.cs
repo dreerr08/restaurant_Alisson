@@ -65,7 +65,6 @@ namespace AliGame.Items
 
             var spriteRenderer = go.AddComponent<SpriteRenderer>();
             spriteRenderer.sprite = item.Icon;
-            spriteRenderer.color = item.Tint;
             spriteRenderer.sortingOrder = 1;
 
             go.AddComponent<CircleCollider2D>().radius = 0.3f;

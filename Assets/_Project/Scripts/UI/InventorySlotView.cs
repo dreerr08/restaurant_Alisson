@@ -96,7 +96,7 @@ namespace AliGame.UI
             if (filled)
             {
                 _icon.sprite = Item.Icon;
-                _icon.color = Item.Tint;
+                _icon.color = Color.white;
             }
 
             _label.text = filled && Item.Icon == null ? Item.DisplayName : string.Empty;

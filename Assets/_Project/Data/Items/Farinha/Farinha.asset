@@ -15,5 +15,4 @@ MonoBehaviour:
   displayName: Farinha
   description: Farinha de trigo para massas e paes.
   icon: {fileID: -6312717979202011298, guid: 62f34213007ad0b4f8b5d5edb2dc7bc9, type: 3}
-  tint: {r: 0.92, g: 0.9, b: 0.85, a: 1}
   maxStack: 99

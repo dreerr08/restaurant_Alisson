@@ -15,5 +15,4 @@ MonoBehaviour:
   displayName: Pizza
   description: Uma pizza quentinha de queijo.
   icon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  tint: {r: 0.95, g: 0.65, b: 0.25, a: 1}
   maxStack: 99

@@ -15,5 +15,4 @@ MonoBehaviour:
   displayName: Queijo
   description: Um bom pedaco de queijo curado.
   icon: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  tint: {r: 1, g: 0.85, b: 0.2, a: 1}
   maxStack: 99

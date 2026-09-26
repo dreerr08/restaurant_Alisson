@@ -66,7 +66,7 @@ namespace AliGame.UI
             tileRect.sizeDelta = new Vector2(56f, 56f);
             tileRect.anchoredPosition = new Vector2(12f, 0f);
 
-            Image icon = UIStyle.CreateImage(tileRect, "Icon", null, item.Tint);
+            Image icon = UIStyle.CreateImage(tileRect, "Icon", null, Color.white);
             icon.sprite = item.Icon;
             icon.enabled = item.Icon != null;
             icon.preserveAspect = true;
